@@ -1,8 +1,13 @@
 package com.example.application.views.admin;
 
+import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.*;
+import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.upload.Upload;
+import com.vaadin.flow.component.upload.receivers.MemoryBuffer;
 import com.vaadin.flow.router.Menu;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
@@ -36,6 +41,15 @@ public class AdminView extends VerticalLayout {
         cards.setWidthFull();
 
         add(title, info, cards);
+
+        MemoryBuffer buffer = new MemoryBuffer();
+        Upload upload = new Upload(buffer);
+
+        upload.addSucceededListener(event -> {
+            Notification.show("File uploaded: " + event.getFileName());
+        });
+
+        add(new H2("File upload"), new Paragraph("Upload admin files here."), upload);
     }
 
     private Div createCard(String title, String text) {
