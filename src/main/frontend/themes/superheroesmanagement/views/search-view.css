@@ -1,0 +1,13 @@
+.search-view {
+    padding: var(--lumo-space-l);
+}
+
+.search-view vaadin-grid {
+    border-radius: var(--lumo-border-radius-l);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.search-view vaadin-text-field,
+.search-view vaadin-combo-box {
+    max-width: 260px;
+}

@@ -3,3 +3,35 @@
 @import url('./views/heroprofile-view.css');
 @import url('./views/powers-view.css');
 @import url('./views/publishers-view.css');
+@import url('./views/search-view.css');
+
+html {
+    --lumo-font-family: "Segoe UI", Arial, sans-serif;
+
+    --lumo-primary-color: #2563eb;
+    --lumo-primary-text-color: #1d4ed8;
+
+    --lumo-success-color: #16a34a;
+    --lumo-error-color: #dc2626;
+
+    --lumo-border-radius-s: 6px;
+    --lumo-border-radius-m: 12px;
+    --lumo-border-radius-l: 20px;
+
+    --lumo-button-size: 42px;
+}
+
+vaadin-button {
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+    transition: all 0.2s ease-in-out;
+}
+
+vaadin-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 12px rgba(0, 0, 0, 0.25);
+}
+
+vaadin-text-field {
+    --vaadin-input-field-border-width: 1px;
+    --vaadin-input-field-border-color: #cbd5e1;
+}

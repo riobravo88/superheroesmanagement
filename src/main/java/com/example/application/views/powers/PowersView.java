@@ -26,10 +26,12 @@ import com.vaadin.flow.spring.data.VaadinSpringDataHelpers;
 import java.util.Optional;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.vaadin.lineawesome.LineAwesomeIconUrl;
+import jakarta.annotation.security.PermitAll;
 
 @PageTitle("Powers")
 @Route("powers/:powersID?/:action?(edit)")
 @Menu(order = 3, icon = LineAwesomeIconUrl.COLUMNS_SOLID)
+@PermitAll
 public class PowersView extends Div implements BeforeEnterObserver {
 
     private final String POWERS_ID = "powersID";
@@ -45,6 +47,8 @@ public class PowersView extends Div implements BeforeEnterObserver {
 
     private final Button cancel = new Button("Cancel");
     private final Button save = new Button("Save");
+    private final Button addNew = new Button("Add new");
+    private final Button delete = new Button("Delete");
 
     private final BeanValidationBinder<Powers> binder;
 
@@ -89,6 +93,20 @@ public class PowersView extends Div implements BeforeEnterObserver {
         // Bind fields. This is where you'd define e.g. validation rules
 
         binder.bindInstanceFields(this);
+
+        addNew.addClickListener(e -> {
+            this.powers = new Powers();
+            binder.readBean(this.powers);
+        });
+
+        delete.addClickListener(e -> {
+            if (this.powers != null && this.powers.getId() != null) {
+                powersService.delete(this.powers.getId());
+                clearForm();
+                refreshGrid();
+                Notification.show("Power deleted");
+            }
+        });
 
         cancel.addClickListener(e -> {
             clearForm();
@@ -162,7 +180,9 @@ public class PowersView extends Div implements BeforeEnterObserver {
         buttonLayout.setClassName("button-layout");
         cancel.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
         save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        buttonLayout.add(save, cancel);
+        addNew.addThemeVariants(ButtonVariant.LUMO_SUCCESS);
+        delete.addThemeVariants(ButtonVariant.LUMO_ERROR);
+        buttonLayout.add(save, cancel, addNew, delete);
         editorLayoutDiv.add(buttonLayout);
     }
 

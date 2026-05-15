@@ -26,10 +26,12 @@ import com.vaadin.flow.spring.data.VaadinSpringDataHelpers;
 import java.util.Optional;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.vaadin.lineawesome.LineAwesomeIconUrl;
+import jakarta.annotation.security.PermitAll;
 
 @PageTitle("Heroprofile")
 @Route("heroprofile/:heroProfileID?/:action?(edit)")
 @Menu(order = 2, icon = LineAwesomeIconUrl.COLUMNS_SOLID)
+@PermitAll
 public class HeroprofileView extends Div implements BeforeEnterObserver {
 
     private final String HEROPROFILE_ID = "heroProfileID";
@@ -45,6 +47,8 @@ public class HeroprofileView extends Div implements BeforeEnterObserver {
 
     private final Button cancel = new Button("Cancel");
     private final Button save = new Button("Save");
+    private final Button addNew = new Button("Add new");
+    private final Button delete = new Button("Delete");
 
     private final BeanValidationBinder<HeroProfile> binder;
 
@@ -90,6 +94,7 @@ public class HeroprofileView extends Div implements BeforeEnterObserver {
 
         binder.bindInstanceFields(this);
 
+
         cancel.addClickListener(e -> {
             clearForm();
             refreshGrid();
@@ -113,6 +118,24 @@ public class HeroprofileView extends Div implements BeforeEnterObserver {
                 n.addThemeVariants(NotificationVariant.LUMO_ERROR);
             } catch (ValidationException validationException) {
                 Notification.show("Failed to update the data. Check again that all values are valid");
+            }
+        });
+
+        addNew.addClickListener(e -> {
+            clearForm();
+            this.heroProfile = new HeroProfile();
+            UI.getCurrent().navigate(HeroprofileView.class);
+        });
+
+        delete.addClickListener(e -> {
+            if (this.heroProfile != null && this.heroProfile.getId() != null) {
+                heroProfileService.delete(this.heroProfile.getId());
+                clearForm();
+                refreshGrid();
+                Notification.show("Deleted");
+                UI.getCurrent().navigate(HeroprofileView.class);
+            } else {
+                Notification.show("Nothing to delete");
             }
         });
     }
@@ -163,7 +186,9 @@ public class HeroprofileView extends Div implements BeforeEnterObserver {
         buttonLayout.setClassName("button-layout");
         cancel.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
         save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        buttonLayout.add(save, cancel);
+        delete.addThemeVariants(ButtonVariant.LUMO_ERROR);
+        addNew.addThemeVariants(ButtonVariant.LUMO_CONTRAST);
+        buttonLayout.add(save, cancel, addNew, delete);
         editorLayoutDiv.add(buttonLayout);
     }
 

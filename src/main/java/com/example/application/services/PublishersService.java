@@ -2,6 +2,8 @@ package com.example.application.services;
 
 import com.example.application.data.Publishers;
 import com.example.application.data.PublishersRepository;
+
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -39,6 +41,9 @@ public class PublishersService {
 
     public int count() {
         return (int) repository.count();
+    }
+    public List<Publishers> listAll() {
+        return repository.findAll();
     }
 
 }

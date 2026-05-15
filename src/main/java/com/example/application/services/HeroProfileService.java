@@ -2,6 +2,8 @@ package com.example.application.services;
 
 import com.example.application.data.HeroProfile;
 import com.example.application.data.HeroProfileRepository;
+
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -41,4 +43,7 @@ public class HeroProfileService {
         return (int) repository.count();
     }
 
+    public List<HeroProfile> listAll() {
+        return repository.findAll();
+    }
 }

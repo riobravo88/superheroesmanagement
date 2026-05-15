@@ -26,10 +26,13 @@ import com.vaadin.flow.spring.data.VaadinSpringDataHelpers;
 import java.util.Optional;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.vaadin.lineawesome.LineAwesomeIconUrl;
+import com.example.application.data.Superhero;
+import jakarta.annotation.security.PermitAll;
 
 @PageTitle("Publishers")
 @Route("publishers/:publishersID?/:action?(edit)")
 @Menu(order = 4, icon = LineAwesomeIconUrl.COLUMNS_SOLID)
+@PermitAll
 public class PublishersView extends Div implements BeforeEnterObserver {
 
     private final String PUBLISHERS_ID = "publishersID";
@@ -45,6 +48,8 @@ public class PublishersView extends Div implements BeforeEnterObserver {
 
     private final Button cancel = new Button("Cancel");
     private final Button save = new Button("Save");
+    private final Button addNew = new Button("Add new");
+    private final Button delete = new Button("Delete");
 
     private final BeanValidationBinder<Publishers> binder;
 
@@ -70,6 +75,17 @@ public class PublishersView extends Div implements BeforeEnterObserver {
         grid.addColumn("foundedYear").setAutoWidth(true);
         grid.addColumn("ceo").setAutoWidth(true);
         grid.addColumn("universe").setAutoWidth(true);
+        grid.addColumn(publisher -> {
+            if (publisher.getSuperheroes() == null || publisher.getSuperheroes().isEmpty()) {
+                return "-";
+            }
+
+            return publisher.getSuperheroes().stream()
+                    .map(Superhero::getSpname)
+                    .reduce((a, b) -> a + ", " + b)
+                    .orElse("-");
+        }).setHeader("Heroes");
+
         grid.setItems(query -> publishersService.list(VaadinSpringDataHelpers.toSpringPageRequest(query)).stream());
         grid.addThemeVariants(GridVariant.LUMO_NO_BORDER);
 
@@ -113,6 +129,25 @@ public class PublishersView extends Div implements BeforeEnterObserver {
                 n.addThemeVariants(NotificationVariant.LUMO_ERROR);
             } catch (ValidationException validationException) {
                 Notification.show("Failed to update the data. Check again that all values are valid");
+            }
+        });
+
+        addNew.addClickListener(e -> {
+            grid.asSingleSelect().clear();
+            this.publishers = null;
+            clearForm();
+        });
+
+        delete.addClickListener(e -> {
+            if (this.publishers != null && this.publishers.getId() != null) {
+                publishersService.delete(this.publishers.getId());
+                Notification.show("Deleted publisher");
+
+                this.publishers = null;
+                clearForm();
+                refreshGrid();
+            } else {
+                Notification.show("Select a publisher first");
             }
         });
     }
@@ -162,7 +197,9 @@ public class PublishersView extends Div implements BeforeEnterObserver {
         buttonLayout.setClassName("button-layout");
         cancel.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
         save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        buttonLayout.add(save, cancel);
+        delete.addThemeVariants(ButtonVariant.LUMO_ERROR);
+        addNew.addThemeVariants(ButtonVariant.LUMO_CONTRAST);
+        buttonLayout.add(save, cancel, addNew, delete);
         editorLayoutDiv.add(buttonLayout);
     }
 

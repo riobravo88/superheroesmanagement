@@ -1,10 +1,13 @@
 package com.example.application.views.heros;
 
+import com.example.application.data.HeroProfile;
 import com.example.application.data.Superhero;
+import com.example.application.services.HeroProfileService;
 import com.example.application.services.SuperheroService;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
@@ -23,13 +26,18 @@ import com.vaadin.flow.router.Menu;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.spring.data.VaadinSpringDataHelpers;
+import com.example.application.data.Publishers;
+import com.example.application.services.PublishersService;
+import java.util.List;
 import java.util.Optional;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.vaadin.lineawesome.LineAwesomeIconUrl;
+import com.example.application.data.Powers;
+import jakarta.annotation.security.PermitAll;
 
 @PageTitle("Heros")
 @Route("heros/:superheroID?/:action?(edit)")
 @Menu(order = 1, icon = LineAwesomeIconUrl.COLUMNS_SOLID)
+@PermitAll
 public class HerosView extends Div implements BeforeEnterObserver {
 
     private final String SUPERHERO_ID = "superheroID";
@@ -44,20 +52,32 @@ public class HerosView extends Div implements BeforeEnterObserver {
     private TextField universe;
     private TextField firstApperiance;
 
+    private ComboBox<HeroProfile> heroProfile;
+    private ComboBox<Publishers> publisher;
+
     private final Button cancel = new Button("Cancel");
     private final Button save = new Button("Save");
+    private final Button delete = new Button("Delete");
+    private final Button addNew = new Button("Add New");
 
     private final BeanValidationBinder<Superhero> binder;
 
     private Superhero superhero;
 
     private final SuperheroService superheroService;
+    private final HeroProfileService heroProfileService;
+    private final PublishersService publishersService;
 
-    public HerosView(SuperheroService superheroService) {
+    public HerosView(SuperheroService superheroService,
+                     HeroProfileService heroProfileService,
+                     PublishersService publishersService) {
+
         this.superheroService = superheroService;
+        this.heroProfileService = heroProfileService;
+        this.publishersService = publishersService;
+
         addClassNames("heros-view");
 
-        // Create UI
         SplitLayout splitLayout = new SplitLayout();
 
         createGridLayout(splitLayout);
@@ -65,31 +85,56 @@ public class HerosView extends Div implements BeforeEnterObserver {
 
         add(splitLayout);
 
-        // Configure Grid
-        grid.addColumn("name").setAutoWidth(true);
-        grid.addColumn("spname").setAutoWidth(true);
-        grid.addColumn("occupation").setAutoWidth(true);
-        grid.addColumn("homeCity").setAutoWidth(true);
-        grid.addColumn("universe").setAutoWidth(true);
-        grid.addColumn("firstApperiance").setAutoWidth(true);
-        grid.setItems(query -> superheroService.list(VaadinSpringDataHelpers.toSpringPageRequest(query)).stream());
+
+        grid.addColumn("name");
+        grid.addColumn("spname");
+        grid.addColumn("occupation");
+        grid.addColumn("homeCity");
+        grid.addColumn("universe");
+        grid.addColumn("firstApperiance");
+
+        grid.addColumn(hero -> {
+            HeroProfile profile = hero.getHeroProfile();
+            return profile == null ? "-" : "Weakness: " + profile.getWeakness();
+        }).setHeader("Hero Profile");
+
+        grid.addColumn(hero -> {
+            Publishers publisher = hero.getPublisher();
+            return publisher == null ? "-" : publisher.getPublisherName();
+        }).setHeader("Publisher");
+
+        grid.addColumn(hero -> {
+
+            if (hero.getPowers() == null || hero.getPowers().isEmpty()) {
+                return "-";
+            }
+
+            return hero.getPowers().stream()
+                    .map(Powers::getPowerName)
+                    .reduce((a, b) -> a + ", " + b)
+                    .orElse("-");
+
+        }).setHeader("Powers");
+
+        grid.setItems(query ->
+                superheroService.list(VaadinSpringDataHelpers.toSpringPageRequest(query)).stream()
+        );
+
         grid.addThemeVariants(GridVariant.LUMO_NO_BORDER);
 
-        // when a row is selected or deselected, populate form
         grid.asSingleSelect().addValueChangeListener(event -> {
             if (event.getValue() != null) {
-                UI.getCurrent().navigate(String.format(SUPERHERO_EDIT_ROUTE_TEMPLATE, event.getValue().getId()));
+                UI.getCurrent().navigate(
+                        String.format(SUPERHERO_EDIT_ROUTE_TEMPLATE, event.getValue().getId())
+                );
             } else {
                 clearForm();
                 UI.getCurrent().navigate(HerosView.class);
             }
         });
+        
 
-        // Configure Form
         binder = new BeanValidationBinder<>(Superhero.class);
-
-        // Bind fields. This is where you'd define e.g. validation rules
-
         binder.bindInstanceFields(this);
 
         cancel.addClickListener(e -> {
@@ -99,41 +144,62 @@ public class HerosView extends Div implements BeforeEnterObserver {
 
         save.addClickListener(e -> {
             try {
-                if (this.superhero == null) {
-                    this.superhero = new Superhero();
+                if (superhero == null) {
+                    superhero = new Superhero();
                 }
-                binder.writeBean(this.superhero);
-                superheroService.save(this.superhero);
+
+                binder.writeBean(superhero);
+
+                superhero.setHeroProfile(heroProfile.getValue());
+                superhero.setPublisher(publisher.getValue());
+
+                superheroService.save(superhero);
+
                 clearForm();
                 refreshGrid();
-                Notification.show("Data updated");
+
                 UI.getCurrent().navigate(HerosView.class);
-            } catch (ObjectOptimisticLockingFailureException exception) {
-                Notification n = Notification.show(
-                        "Error updating the data. Somebody else has updated the record while you were making changes.");
-                n.setPosition(Position.MIDDLE);
-                n.addThemeVariants(NotificationVariant.LUMO_ERROR);
-            } catch (ValidationException validationException) {
-                Notification.show("Failed to update the data. Check again that all values are valid");
+
+                Notification.show("Saved");
+
+            } catch (ValidationException ignored) {
+                Notification.show("Validation error");
             }
+        });
+
+
+
+        delete.addClickListener(e -> {
+            if (superhero != null) {
+                superheroService.delete(superhero.getId());
+                clearForm();
+                refreshGrid();
+                Notification.show("Deleted");
+            }
+        });
+
+        addNew.addClickListener(e -> {
+            superhero = new Superhero();
+            binder.readBean(superhero);
+            grid.select(null);
         });
     }
 
     @Override
     public void beforeEnter(BeforeEnterEvent event) {
-        Optional<Long> superheroId = event.getRouteParameters().get(SUPERHERO_ID).map(Long::parseLong);
-        if (superheroId.isPresent()) {
-            Optional<Superhero> superheroFromBackend = superheroService.get(superheroId.get());
-            if (superheroFromBackend.isPresent()) {
-                populateForm(superheroFromBackend.get());
-            } else {
-                Notification.show(String.format("The requested superhero was not found, ID = %s", superheroId.get()),
-                        3000, Notification.Position.BOTTOM_START);
-                // when a row is selected but the data is no longer available,
-                // refresh grid
-                refreshGrid();
-                event.forwardTo(HerosView.class);
-            }
+        Optional<Long> id = event.getRouteParameters()
+                .get(SUPERHERO_ID)
+                .map(Long::parseLong);
+
+        if (id.isPresent()) {
+            superheroService.get(id.get()).ifPresentOrElse(
+                    this::populateForm,
+                    () -> {
+                        Notification.show("Not found");
+                        refreshGrid();
+                        event.forwardTo(HerosView.class);
+                    }
+            );
         }
     }
 
@@ -141,20 +207,41 @@ public class HerosView extends Div implements BeforeEnterObserver {
         Div editorLayoutDiv = new Div();
         editorLayoutDiv.setClassName("editor-layout");
 
-        Div editorDiv = new Div();
-        editorDiv.setClassName("editor");
-        editorLayoutDiv.add(editorDiv);
-
         FormLayout formLayout = new FormLayout();
+
         name = new TextField("Name");
         spname = new TextField("Spname");
         occupation = new TextField("Occupation");
         homeCity = new TextField("Home City");
         universe = new TextField("Universe");
         firstApperiance = new TextField("First Apperiance");
-        formLayout.add(name, spname, occupation, homeCity, universe, firstApperiance);
 
-        editorDiv.add(formLayout);
+        heroProfile = new ComboBox<>("Hero Profile");
+
+        heroProfile.setItems(heroProfileService.listAll());
+
+        heroProfile.setItemLabelGenerator(p ->
+                p == null ? "" : "Weakness: " + p.getWeakness()
+        );
+
+        heroProfile.setClearButtonVisible(true);
+
+        publisher = new ComboBox<>("Publisher");
+        publisher.setItems(publishersService.listAll());
+        publisher.setItemLabelGenerator(p ->
+                p == null ? "" : p.getPublisherName()
+        );
+        publisher.setClearButtonVisible(true);
+
+        formLayout.add(
+                name, spname, occupation,
+                homeCity, universe,
+                firstApperiance,
+                heroProfile,
+                publisher
+        );
+
+        editorLayoutDiv.add(formLayout);
         createButtonLayout(editorLayoutDiv);
 
         splitLayout.addToSecondary(editorLayoutDiv);
@@ -163,21 +250,24 @@ public class HerosView extends Div implements BeforeEnterObserver {
     private void createButtonLayout(Div editorLayoutDiv) {
         HorizontalLayout buttonLayout = new HorizontalLayout();
         buttonLayout.setClassName("button-layout");
+
         cancel.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
         save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        buttonLayout.add(save, cancel);
+        delete.addThemeVariants(ButtonVariant.LUMO_ERROR);
+        addNew.addThemeVariants(ButtonVariant.LUMO_SUCCESS);
+
+        buttonLayout.add(save, cancel, addNew, delete);
         editorLayoutDiv.add(buttonLayout);
     }
 
     private void createGridLayout(SplitLayout splitLayout) {
         Div wrapper = new Div();
         wrapper.setClassName("grid-wrapper");
-        splitLayout.addToPrimary(wrapper);
         wrapper.add(grid);
+        splitLayout.addToPrimary(wrapper);
     }
 
     private void refreshGrid() {
-        grid.select(null);
         grid.getDataProvider().refreshAll();
     }
 
@@ -186,8 +276,19 @@ public class HerosView extends Div implements BeforeEnterObserver {
     }
 
     private void populateForm(Superhero value) {
-        this.superhero = value;
-        binder.readBean(this.superhero);
-
+        superhero = value;
+        binder.readBean(value);
+        if (value != null) {
+            heroProfile.setValue(value.getHeroProfile());
+        } else {
+            heroProfile.clear();
+        }
+        if (value != null) {
+            heroProfile.setValue(value.getHeroProfile());
+            publisher.setValue(value.getPublisher());
+        } else {
+            heroProfile.clear();
+            publisher.clear();
+        }
     }
 }
