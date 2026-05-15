@@ -2,6 +2,7 @@ package com.example.application.views.home;
 
 import com.vaadin.flow.component.html.*;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.router.Menu;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
@@ -27,20 +28,51 @@ public class HomeView extends VerticalLayout {
 
         getStyle().set("text-align", "center");
 
-        H1 title = new H1("Superheroes Management");
+        H1 title = new H1();
+        Paragraph description = new Paragraph();
+        UnorderedList features = new UnorderedList();
 
-        Paragraph description = new Paragraph(
-                "This application is used to manage superheroes, profiles, publishers and powers."
-        );
+        Button fiButton = new Button("FI");
+        Button enButton = new Button("EN");
 
-        UnorderedList features = new UnorderedList(
-                new ListItem("CRUD operations for all main entities"),
-                new ListItem("Relations between superheroes, profiles, publishers and powers"),
-                new ListItem("Advanced search and authentication")
-        );
+        fiButton.addClickListener(e -> {
+            title.setText("Superhero Management");
 
+            description.setText(
+                    "Tällä sovelluksella hallitaan supersankareita, profiileja, julkaisijoita ja voimia."
+            );
 
-        add(title, description, features);
+            features.removeAll();
+
+            features.add(
+                    new ListItem("CRUD-toiminnot kaikille entiteeteille"),
+                    new ListItem("Relaatiot supersankareiden, profiilien, julkaisijoiden ja voimien välillä"),
+                    new ListItem("Edistynyt haku ja kirjautuminen")
+            );
+        });
+
+        enButton.addClickListener(e -> {
+            title.setText("Superhero Management");
+
+            description.setText(
+                    "This application is used to manage superheroes, profiles, publishers and powers."
+            );
+
+            features.removeAll();
+
+            features.add(
+                    new ListItem("CRUD operations for all main entities"),
+                    new ListItem("Relations between superheroes, profiles, publishers and powers"),
+                    new ListItem("Advanced search and authentication")
+            );
+        });
+
+        HorizontalLayout languageButtons =
+                new HorizontalLayout(fiButton, enButton);
+
+        fiButton.click();
+
+        add(languageButtons, title, description, features);
     }
 
 }
